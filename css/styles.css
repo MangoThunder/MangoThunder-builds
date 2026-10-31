@@ -472,6 +472,58 @@ button.shot:hover img { transform: scale(1.03); }
 @keyframes copier-uncover { from { clip-path: inset(0 0 0 0); } to { clip-path: inset(0 0 0 100%); } }
 @keyframes copier-bar { from { left: 0; } to { left: 100%; } }
 
+/* ── more motion ──────────────────────────────────────── */
+/* drafting ruler: scroll progress along the top edge */
+.ruler {
+  position: fixed; left: 0; right: 0; top: env(safe-area-inset-top, 0px); z-index: 30; height: 9px; pointer-events: none;
+  background:
+    repeating-linear-gradient(90deg, var(--muted) 0 1px, transparent 1px 100px) 0 0 / 100% 9px no-repeat,
+    repeating-linear-gradient(90deg, var(--line-soft) 0 1px, transparent 1px 10px) 0 0 / 100% 4px no-repeat;
+}
+.ruler-fill {
+  position: absolute; left: 0; top: 0; height: 3px; width: 100%;
+  background: var(--stamp);
+  transform-origin: left; transform: scaleX(var(--p, 0));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--stamp) 70%, transparent);
+}
+
+/* saving: a star flies into the Saved counter, which bumps */
+.flying-star { position: fixed; z-index: 70; width: 22px; height: 22px; color: var(--stamp); pointer-events: none; }
+.flying-star svg { width: 22px; height: 22px; fill: currentColor; filter: drop-shadow(0 0 6px var(--stamp)); }
+#nav-saved.bump { animation: bump 0.45s cubic-bezier(.3, 1.8, .5, 1); }
+@keyframes bump { 40% { transform: scale(1.18); border-color: var(--stamp); color: var(--stamp); } }
+
+/* the build viewer unrolls like a blueprint */
+.modal-panel { animation: unroll 0.5s cubic-bezier(.2, .8, .3, 1) both; }
+@keyframes unroll {
+  from { clip-path: inset(0 0 100% 0); transform: translateY(-10px); }
+  to { clip-path: inset(0 0 0 0); transform: none; }
+}
+
+/* switching class deals the sheets onto the table; saving keeps them still */
+.grid.dealt { perspective: 1400px; }
+.grid.dealt .sheet { animation-name: deal; animation-duration: 0.55s; transform-origin: top center; }
+@keyframes deal { from { opacity: 0.05; transform: translateY(-26px) rotateX(55deg); } }
+.grid.quiet .sheet, .grid.quiet .sheet .gun *, .grid.quiet .sheet .stamp { animation: none; }
+
+/* copying: a scanner beam reads across the code */
+.code-row { position: relative; }
+.code-row.copied-row::after {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 40%; pointer-events: none;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--stamp) 45%, transparent), transparent);
+  animation: read-code 0.7s ease-out both;
+}
+@keyframes read-code { from { transform: translateX(-100%); } to { transform: translateX(260%); opacity: 0; } }
+
+/* filter chips: an underline draws in on hover */
+.chip { position: relative; }
+.chip::after {
+  content: ""; position: absolute; left: -1px; right: -1px; bottom: -1px; height: 2px;
+  background: var(--stamp); transform: scaleX(0); transform-origin: left; transition: transform 0.25s ease-out;
+}
+.chip:hover::after { transform: scaleX(1); }
+.chip[aria-pressed="true"]::after { transform: scaleX(1); }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }

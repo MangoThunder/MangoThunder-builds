@@ -298,7 +298,7 @@
         <div class="bp-title">
           <div class="who">
             ${avatarHTML("avatar")}
-            <small class="label">DWG NO. MT-DF-001 · REV ${pad2(builds.length)}</small>
+            <small class="label">DWG NO. MT-DF-001 · REV <span data-count="${builds.length}" data-pad="2">${pad2(builds.length)}</span></small>
           </div>
           <h1><span class="name">${esc(cfg.name)}</span><span class="sub">Gunsmith sheets</span></h1>
           ${cfg.tagline ? `<p class="tagline">${esc(cfg.tagline)}</p>` : ""}
@@ -308,7 +308,7 @@
           <tr><td>DRAWN BY</td><td>${esc(cfg.name)}</td></tr>
           <tr><td>GAME</td><td>${esc(cfg.game)}</td></tr>
           <tr><td>MODE</td><td>${esc(cfg.mode)}</td></tr>
-          <tr><td>SHEETS</td><td>${builds.length}</td></tr>
+          <tr><td>SHEETS</td><td><span data-count="${builds.length}">${builds.length}</span></td></tr>
           ${cfg.schedule ? `<tr><td>ON AIR</td><td>${esc(cfg.schedule)}</td></tr>` : ""}
           <tr><td>STATUS</td><td id="status">${statusHTML()}</td></tr>
           ${cfg.socials.filter((s) => s.label !== "Twitch").map((s) => `<tr><td>${esc(s.label.toUpperCase())}</td><td>${extLink(s.url, "Follow →")}</td></tr>`).join("")}
@@ -356,6 +356,7 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <div class="copier" id="copier" aria-hidden="true"></div>
+    <div class="ruler" id="ruler" aria-hidden="true"><span class="ruler-fill"></span></div>
   `;
 
   const $ = (sel) => app.querySelector(sel);
@@ -401,7 +402,13 @@
   function setFilters(changes) {
     Object.assign(state, changes);
     if ("q" in changes) search.value = state.q;
+    // Switching class or saved view deals the sheets onto the table; typing a search just fades them.
+    gridMode("category" in changes || "savedOnly" in changes ? "dealt" : "");
     render();
+  }
+  function gridMode(mode) {
+    grid.classList.remove("dealt", "quiet");
+    if (mode) grid.classList.add(mode);
   }
   const resetFilters = () => setFilters({ q: "", category: "All", savedOnly: false });
 
@@ -557,13 +564,15 @@
     );
   }
 
-  function toggleFav(id) {
+  function toggleFav(id, btn) {
     const b = byId(id);
     const saved = !state.favs.has(id);
+    if (saved && btn) flyStar(btn);
     if (saved) state.favs.add(id);
     else state.favs.delete(id);
     store.set(FAV_KEY, [...state.favs]);
     toast(saved ? `${b.weapon} saved` : `${b.weapon} removed from saved`, "<span>Saved builds stay on this device.</span>");
+    gridMode("quiet"); // the sheets stay put; only the star changes
     render();
     if (!modal.hidden) renderModal();
   }
@@ -574,7 +583,7 @@
     if (!t) return;
     const d = t.dataset;
     if ("copy" in d) copyBuild(d.copy, t);
-    else if ("fav" in d) toggleFav(d.fav);
+    else if ("fav" in d) toggleFav(d.fav, t);
     else if ("picTab" in d) {
       state.pic = d.picTab;
       renderModal();
@@ -685,9 +694,75 @@
     if (shot && !shot.contains(e.relatedTarget)) shot.classList.remove("aiming");
   });
 
+  // ── small motion helpers ───────────────────────────────────
+  const calm = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // A star flies from the button into the Saved counter, which then bumps.
+  function flyStar(btn) {
+    const target = $("#nav-saved");
+    if (calm() || !target.animate) return;
+    const from = btn.getBoundingClientRect();
+    const to = target.querySelector(".n").getBoundingClientRect();
+    const star = document.createElement("span");
+    star.className = "flying-star";
+    star.innerHTML = icon.star;
+    star.style.left = from.left + from.width / 2 - 11 + "px";
+    star.style.top = from.top + from.height / 2 - 11 + "px";
+    document.body.appendChild(star);
+    const dx = to.left + to.width / 2 - (from.left + from.width / 2);
+    const dy = to.top + to.height / 2 - (from.top + from.height / 2);
+    star.animate(
+      [
+        { transform: "translate(0, 0) scale(1) rotate(0deg)", opacity: 1 },
+        { transform: `translate(${dx * 0.5}px, ${dy * 0.5 - 60}px) scale(1.6) rotate(180deg)`, opacity: 1, offset: 0.5 },
+        { transform: `translate(${dx}px, ${dy}px) scale(0.6) rotate(360deg)`, opacity: 0.9 }
+      ],
+      { duration: 700, easing: "cubic-bezier(.4, 0, .3, 1)" }
+    ).onfinish = () => {
+      star.remove();
+      target.classList.remove("bump");
+      void target.offsetWidth;
+      target.classList.add("bump");
+    };
+  }
+
+  // Title-block numbers count up from zero once on load.
+  function countUp() {
+    if (calm()) return;
+    app.querySelectorAll("[data-count]").forEach((el) => {
+      const end = Number(el.dataset.count);
+      const padTo = Number(el.dataset.pad || 0);
+      const t0 = performance.now();
+      const tick = (now) => {
+        const k = Math.min(1, (now - t0) / 900);
+        const v = Math.round(end * (1 - Math.pow(1 - k, 3)));
+        el.textContent = padTo ? String(v).padStart(padTo, "0") : v;
+        if (k < 1) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+  }
+
+  // Drafting ruler along the top edge fills as the page scrolls.
+  const ruler = $("#ruler");
+  let rulerQueued = false;
+  function updateRuler() {
+    rulerQueued = false;
+    const max = document.documentElement.scrollHeight - window.innerHeight;
+    ruler.hidden = max < 40;
+    ruler.style.setProperty("--p", max > 0 ? Math.min(1, window.scrollY / max).toFixed(4) : 0);
+  }
+  const queueRuler = () => {
+    if (!rulerQueued) { rulerQueued = true; requestAnimationFrame(updateRuler); }
+  };
+  window.addEventListener("scroll", queueRuler, { passive: true });
+  window.addEventListener("resize", queueRuler);
+
   // ── start ──────────────────────────────────────────────────
   render();
   syncHash();
+  countUp();
+  updateRuler();
   if (cfg.live === "auto" && cfg.twitch) {
     checkLive();
     setInterval(checkLive, 120000);
