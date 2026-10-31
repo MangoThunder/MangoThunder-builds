@@ -32,7 +32,7 @@
 window.GUN_BUILDS = {
   config: {
     name: "MangoThunder",
-    avatar: "",                       // profile picture, e.g. "images/avatar.png" (blank = initials)
+    avatar: "images/avatar.png",      // profile picture, e.g. "images/avatar.png" (blank = initials)
     game: "Delta Force",
     mode: "Operations",
     twitch: "mangothunder_",          // twitch.tv/<this>
