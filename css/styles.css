@@ -494,7 +494,7 @@ button.shot:hover img { transform: scale(1.03); }
 @keyframes bump { 40% { transform: scale(1.18); border-color: var(--stamp); color: var(--stamp); } }
 
 /* the build viewer unrolls like a blueprint */
-.modal-panel { animation: unroll 0.5s cubic-bezier(.2, .8, .3, 1) both; }
+.modal-panel { animation: unroll 1.2s cubic-bezier(.25, .7, .3, 1) both; }
 @keyframes unroll {
   from { clip-path: inset(0 0 100% 0); transform: translateY(-10px); }
   to { clip-path: inset(0 0 0 0); transform: none; }

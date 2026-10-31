@@ -734,7 +734,7 @@
       const padTo = Number(el.dataset.pad || 0);
       const t0 = performance.now();
       const tick = (now) => {
-        const k = Math.min(1, (now - t0) / 900);
+        const k = Math.min(1, (now - t0) / 2200);
         const v = Math.round(end * (1 - Math.pow(1 - k, 3)));
         el.textContent = padTo ? String(v).padStart(padTo, "0") : v;
         if (k < 1) requestAnimationFrame(tick);
