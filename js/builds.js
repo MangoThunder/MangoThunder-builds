@@ -35,7 +35,7 @@ window.GUN_BUILDS = {
     avatar: "",                       // profile picture, e.g. "images/avatar.png" (blank = initials)
     game: "Delta Force",
     mode: "Operations",
-    twitch: "mangothunder",           // twitch.tv/<this>
+    twitch: "mangothunder_",          // twitch.tv/<this>
     live: "auto",                     // "auto" = "Live now" box turns on by itself while streaming; true/false forces it
     liveTitle: "",
     schedule: "",                     // optional, e.g. "Tue–Sat · 8pm ET"
@@ -43,7 +43,7 @@ window.GUN_BUILDS = {
     paper: "blueprint",
     showSampleNotice: false,          // true shows a "sample builds" banner
     socials: [
-      { label: "Twitch", url: "https://www.twitch.tv/mangothunder" }
+      { label: "Twitch", url: "https://www.twitch.tv/mangothunder_" }
     ]
   },
 

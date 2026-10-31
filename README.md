@@ -1,6 +1,6 @@
 # MangoThunder Builds
 
-Delta Force Operations gun builds from [MangoThunder](https://www.twitch.tv/mangothunder)'s stream,
+Delta Force Operations gun builds from [MangoThunder](https://www.twitch.tv/mangothunder_)'s stream,
 laid out as blueprint spec sheets with copy-paste Gunsmith codes.
 
 A static site with no build step: open `index.html` or host the folder anywhere (GitHub Pages works).
