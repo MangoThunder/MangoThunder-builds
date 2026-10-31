@@ -262,6 +262,7 @@
           ${pics.length > 1 ? `<span class="tabs" role="tablist" aria-label="View">
             ${pics.map((k) => `<button type="button" class="tab" role="tab" data-pic-tab="${k}" aria-selected="${k === pic}">${PICTURES[k]}</button>`).join("")}
           </span>` : ""}
+          ${pic === "drawing" ? `<button type="button" class="tab" data-explode aria-pressed="false">Exploded view</button>` : ""}
           ${starBtn(b, "icon-btn star")}
           <button type="button" class="icon-btn" data-close aria-label="Close">${icon.close}</button>
         </div>
@@ -292,6 +293,7 @@
   // ── shell ──────────────────────────────────────────────────
   const app = document.getElementById("app");
   app.innerHTML = `
+    <svg class="sky" id="sky" aria-hidden="true"></svg>
     <div class="page">
       <header class="bp-head">
         <span class="scan" aria-hidden="true"></span>
@@ -579,7 +581,7 @@
 
   // ── events ─────────────────────────────────────────────────
   app.addEventListener("click", (e) => {
-    const t = e.target.closest("[data-copy],[data-fav],[data-pic-tab],[data-open],[data-close],[data-share],[data-reset],[data-cat],[data-paper]");
+    const t = e.target.closest("[data-copy],[data-fav],[data-pic-tab],[data-open],[data-close],[data-share],[data-reset],[data-cat],[data-paper],[data-explode]");
     if (!t) return;
     const d = t.dataset;
     if ("copy" in d) copyBuild(d.copy, t);
@@ -594,6 +596,7 @@
     else if ("reset" in d) resetFilters();
     else if ("cat" in d) setFilters({ category: d.cat });
     else if ("paper" in d) setPaper(d.paper);
+    else if ("explode" in d) toggleExplode(t);
   });
 
   search.addEventListener("input", () => setFilters({ q: search.value }));
@@ -676,6 +679,25 @@
     });
   }
 
+  // ── sheet tilt ─────────────────────────────────────────────
+  // A sheet leans a few degrees toward the pointer, like paper on a desk.
+  grid.addEventListener("pointermove", (e) => {
+    const sheet = e.target.closest(".sheet");
+    if (!sheet || e.pointerType === "touch") return;
+    const r = sheet.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width - 0.5;
+    const y = (e.clientY - r.top) / r.height - 0.5;
+    sheet.style.setProperty("--ry", (x * 6).toFixed(2) + "deg");
+    sheet.style.setProperty("--rx", (y * -6).toFixed(2) + "deg");
+  });
+  grid.addEventListener("pointerout", (e) => {
+    const sheet = e.target.closest(".sheet");
+    if (sheet && !sheet.contains(e.relatedTarget)) {
+      sheet.style.removeProperty("--rx");
+      sheet.style.removeProperty("--ry");
+    }
+  });
+
   // ── drafting crosshair ─────────────────────────────────────
   // Over a drawing, guide lines follow the pointer with an X/Y readout in drawing units.
   grid.addEventListener("pointermove", (e) => {
@@ -696,6 +718,80 @@
 
   // ── small motion helpers ───────────────────────────────────
   const calm = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // Exploded view: every part of the drawing slides away from the gun's center, like an assembly diagram.
+  function toggleExplode(btn) {
+    const wrap = panel.querySelector(".picture-draw");
+    if (!wrap) return;
+    const on = !wrap.classList.contains("exploded");
+    if (on && !wrap.dataset.measured) {
+      wrap.querySelectorAll(".gun :is(path, rect, line, circle)").forEach((el) => {
+        const box = el.getBBox();
+        const all = el.parentNode.getBBox();
+        const dx = (box.x + box.width / 2 - (all.x + all.width / 2)) * 0.1;
+        const dy = (box.y + box.height / 2 - (all.y + all.height / 2)) * 0.45;
+        el.style.setProperty("--ex", dx.toFixed(1) + "px");
+        el.style.setProperty("--ey", dy.toFixed(1) + "px");
+      });
+      wrap.dataset.measured = "1";
+    }
+    wrap.classList.toggle("exploded", on);
+    btn.setAttribute("aria-pressed", String(on));
+    btn.textContent = on ? "Assemble" : "Exploded view";
+  }
+
+  // The search placeholder types out real gun names while the box is empty.
+  function typePlaceholder() {
+    const base = search.placeholder;
+    if (calm() || !builds.length) return;
+    const names = builds.map((b) => b.weapon);
+    let n = 0, i = 0, del = false;
+    const step = () => {
+      if (search.value || document.activeElement === search) {
+        search.placeholder = base;
+        return setTimeout(step, 1200);
+      }
+      const word = `Search ${names[n % names.length]}…`;
+      i += del ? -1 : 1;
+      search.placeholder = word.slice(0, Math.max(0, i)) || " ";
+      if (!del && i >= word.length) { del = true; return setTimeout(step, 1700); }
+      if (del && i <= 0) { del = false; n++; return setTimeout(step, 350); }
+      setTimeout(step, del ? 30 : 75);
+    };
+    setTimeout(step, 2600);
+  }
+
+  // Lightning now and then: a jagged bolt runs down the background grid with a faint flash.
+  const sky = $("#sky");
+  function strike() {
+    if (calm() || document.hidden || !sky.animate) return;
+    const w = window.innerWidth, h = window.innerHeight;
+    let x = Math.round((w * (0.15 + Math.random() * 0.7)) / 20) * 20;
+    let y = 0;
+    const end = h * (0.45 + Math.random() * 0.3);
+    let d = `M${x} ${y}`;
+    while (y < end) {
+      y += 20 + Math.round(Math.random() * 3) * 20;
+      x += (Math.random() < 0.5 ? -1 : 1) * (20 + Math.round(Math.random() * 2) * 20);
+      d += ` L${x} ${y}`;
+    }
+    const ns = "http://www.w3.org/2000/svg";
+    const bolt = document.createElementNS(ns, "path");
+    bolt.setAttribute("d", d);
+    bolt.setAttribute("pathLength", "1");
+    bolt.setAttribute("class", "bolt");
+    sky.appendChild(bolt);
+    bolt.animate([{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], { duration: 260, easing: "ease-in", fill: "forwards" });
+    bolt.animate(
+      [{ opacity: 0.95 }, { opacity: 0.95, offset: 0.3 }, { opacity: 0.2, offset: 0.4 }, { opacity: 0.8, offset: 0.5 }, { opacity: 0 }],
+      { duration: 1100, easing: "linear" }
+    ).onfinish = () => bolt.remove();
+    const flash = getComputedStyle(document.documentElement).getPropertyValue("--sky-flash").trim();
+    sky.animate([{ backgroundColor: "transparent" }, { backgroundColor: flash, offset: 0.25 }, { backgroundColor: "transparent" }], { duration: 700 });
+  }
+  function scheduleStrike() {
+    setTimeout(() => { strike(); scheduleStrike(); }, 9000 + Math.random() * 9000);
+  }
 
   // A star flies from the button into the Saved counter, which then bumps.
   function flyStar(btn) {
@@ -762,6 +858,8 @@
   render();
   syncHash();
   countUp();
+  typePlaceholder();
+  scheduleStrike();
   updateRuler();
   if (cfg.live === "auto" && cfg.twitch) {
     checkLive();

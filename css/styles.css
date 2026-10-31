@@ -2,6 +2,7 @@
    then a grid of spec sheets (one per build). Two "papers" (html[data-paper]) set the same tokens;
    "blueprint" is the default on :root. Everything below reads only tokens. */
 :root {
+  --sky-flash: rgba(205, 230, 255, 0.07);
   --bg: #0d3a6b;
   --grid: rgba(205, 230, 255, 0.14);
   --grid-fine: rgba(205, 230, 255, 0.06);
@@ -523,6 +524,42 @@ button.shot:hover img { transform: scale(1.03); }
 }
 .chip:hover::after { transform: scaleX(1); }
 .chip[aria-pressed="true"]::after { transform: scaleX(1); }
+
+/* ── thunder set ──────────────────────────────────────── */
+/* lightning across the background grid */
+.sky { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+.page { position: relative; z-index: 1; }
+.sky .bolt {
+  fill: none; stroke: var(--stamp); stroke-width: 2.5; stroke-linejoin: miter;
+  stroke-dasharray: 1; stroke-dashoffset: 1;
+  filter: drop-shadow(0 0 6px var(--stamp)) drop-shadow(0 0 18px var(--stamp));
+}
+
+/* logo: an electric flicker every few seconds, a jolt on hover */
+.avatar { animation: pop 0.7s cubic-bezier(.2, 1.4, .4, 1) both, zap 7s linear 3s infinite; }
+@keyframes zap {
+  0%, 88%, 100% { box-shadow: none; filter: none; }
+  89% { box-shadow: 0 0 14px 3px var(--stamp); filter: brightness(1.5); }
+  90% { box-shadow: none; filter: none; }
+  91.5% { box-shadow: 0 0 22px 6px var(--stamp); filter: brightness(1.7); }
+  93% { box-shadow: 0 0 6px 1px var(--stamp); filter: none; }
+}
+.avatar:hover { animation: jolt 0.4s steps(2) 2; box-shadow: 0 0 18px 4px var(--stamp); }
+@keyframes jolt {
+  0% { transform: translate(0, 0) rotate(0); } 25% { transform: translate(-2px, 1px) rotate(-3deg); }
+  50% { transform: translate(2px, -1px) rotate(2deg); } 75% { transform: translate(-1px, -1px) rotate(-1deg); }
+}
+
+/* sheets lean toward the pointer */
+.sheet { transform: perspective(1000px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); transition: background-color 0.2s, border-color 0.2s, transform 0.25s ease-out; }
+
+/* exploded view in the build viewer */
+.picture-draw .gun :is(path, rect, line, circle) {
+  transition: transform 0.7s cubic-bezier(.3, 1.3, .5, 1), stroke 0.25s;
+}
+.picture-draw.exploded .gun :is(path, rect, line, circle) { transform: translate(var(--ex, 0), var(--ey, 0)); }
+.picture-draw.exploded .gun :is(path, rect, line, circle):nth-child(odd) { transition-delay: 0.05s; }
+.tab[data-explode][aria-pressed="true"] { border-style: solid; color: var(--stamp); border-color: var(--stamp); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
