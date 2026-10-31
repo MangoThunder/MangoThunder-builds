@@ -294,6 +294,7 @@
   const app = document.getElementById("app");
   app.innerHTML = `
     <svg class="sky" id="sky" aria-hidden="true"></svg>
+    <svg class="zap-layer" id="zap" aria-hidden="true"></svg>
     <div class="page">
       <header class="bp-head">
         <span class="scan" aria-hidden="true"></span>
@@ -302,7 +303,7 @@
             ${avatarHTML("avatar")}
             <small class="label">DWG NO. MT-DF-001 · REV <span data-count="${builds.length}" data-pad="2">${pad2(builds.length)}</span></small>
           </div>
-          <h1><span class="name">${esc(cfg.name)}</span><span class="sub">Gunsmith sheets</span></h1>
+          <h1 aria-label="${esc(cfg.name)} Gunsmith sheets"><span class="name" aria-hidden="true">${[...cfg.name].map((c, i) => `<span class="ch" style="--n:${i}">${esc(c)}</span>`).join("")}</span><span class="sub" aria-hidden="true">Gunsmith sheets</span></h1>
           ${cfg.tagline ? `<p class="tagline">${esc(cfg.tagline)}</p>` : ""}
           <span class="head-dim" aria-hidden="true"></span>
         </div>
@@ -390,7 +391,7 @@
 
     const q = state.q.trim();
     const where = [state.category !== "All" && "in " + state.category, state.savedOnly && "saved"].filter(Boolean).join(", ");
-    $("#count").innerHTML = `<strong>${plural(list.length, "sheet")}</strong>${q ? ` ${list.length === 1 ? "matches" : "match"} “${esc(q)}”` : ""}${where ? " " + esc(where) : ""}`;
+    $("#count").innerHTML = `<strong><span class="num">${list.length}</span> <span class="unit">${list.length === 1 ? "sheet" : "sheets"}</span></strong>${q ? ` ${list.length === 1 ? "matches" : "match"} “${esc(q)}”` : ""}${where ? " " + esc(where) : ""}`;
 
     app.querySelectorAll("[data-cat]").forEach((el) => el.setAttribute("aria-pressed", String(el.dataset.cat === state.category)));
     $("#nav-all").setAttribute("aria-pressed", String(!state.savedOnly));
@@ -399,6 +400,7 @@
     $("#clear").hidden = !state.q;
     $("#slash").hidden = !!state.q;
     renderPaper();
+    rollCount(list.length);
   }
 
   function setFilters(changes) {
@@ -547,6 +549,7 @@
     writeClipboard(b.code).then(
       () => {
         flashCopied(id);
+        strikeAt(btn);
         toast(`${b.weapon} code copied`,
           `<span>Open the Gunsmith in ${esc(cfg.game)} → Import → paste.</span>` +
           (twitchUrl ? extLink(twitchUrl, `Like the build? Follow ${esc(cfg.name)} on Twitch →`) : ""));
@@ -789,6 +792,73 @@
     const flash = getComputedStyle(document.documentElement).getPropertyValue("--sky-flash").trim();
     sky.animate([{ backgroundColor: "transparent" }, { backgroundColor: flash, offset: 0.25 }, { backgroundColor: "transparent" }], { duration: 700 });
   }
+  // Copying a code calls a bolt down from the top of the screen onto the Copy button.
+  const zap = $("#zap");
+  function strikeAt(btn) {
+    if (calm() || !zap.animate || !btn.isConnected) return;
+    const r = btn.getBoundingClientRect();
+    const tx = r.left + r.width / 2, ty = r.top + 4;
+    if (ty < 40) return;
+    const steps = Math.max(4, Math.round(ty / 70));
+    let x = tx + (Math.random() - 0.5) * 240;
+    let d = `M${x.toFixed(1)} 0`;
+    for (let k = 1; k < steps; k++) {
+      const y = (ty * k) / steps;
+      x += (tx - x) / (steps - k + 1) + (Math.random() - 0.5) * 60;
+      d += ` L${x.toFixed(1)} ${y.toFixed(1)}`;
+    }
+    d += ` L${tx.toFixed(1)} ${ty.toFixed(1)}`;
+    const bolt = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    bolt.setAttribute("d", d);
+    bolt.setAttribute("pathLength", "1");
+    bolt.setAttribute("class", "bolt");
+    zap.appendChild(bolt);
+    bolt.animate([{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], { duration: 180, easing: "ease-in", fill: "forwards" });
+    bolt.animate([{ opacity: 1 }, { opacity: 1, offset: 0.35 }, { opacity: 0.3, offset: 0.45 }, { opacity: 0.9, offset: 0.55 }, { opacity: 0 }], { duration: 700 })
+      .onfinish = () => bolt.remove();
+    setTimeout(() => {
+      btn.classList.remove("struck");
+      void btn.offsetWidth;
+      btn.classList.add("struck");
+    }, 170);
+  }
+
+  // The sheet count rolls from the old number to the new one.
+  let shownCount = null;
+  function rollCount(to) {
+    const el = $("#count .num");
+    const unit = $("#count .unit");
+    const from = shownCount;
+    shownCount = to;
+    if (from === null || from === to || calm()) return;
+    const t0 = performance.now();
+    const tick = (now) => {
+      const k = Math.min(1, (now - t0) / 450);
+      const v = Math.round(from + (to - from) * k);
+      el.textContent = v;
+      unit.textContent = v === 1 ? "sheet" : "sheets";
+      if (k < 1) requestAnimationFrame(tick);
+    };
+    el.textContent = from;
+    unit.textContent = from === 1 ? "sheet" : "sheets";
+    requestAnimationFrame(tick);
+  }
+
+  // Hovering a sheet sends electric current racing along every line of its drawing.
+  grid.addEventListener("pointerover", (e) => {
+    const sheet = e.target.closest(".sheet");
+    if (!sheet || sheet.contains(e.relatedTarget) || calm()) return;
+    const gun = sheet.querySelector(".draw .gun:not(.current)");
+    if (!gun || sheet.querySelector(".gun.current")) return;
+    const live = gun.cloneNode(true);
+    live.setAttribute("class", "gun current");
+    gun.parentNode.appendChild(live);
+  });
+  grid.addEventListener("pointerout", (e) => {
+    const sheet = e.target.closest(".sheet");
+    if (sheet && !sheet.contains(e.relatedTarget)) sheet.querySelectorAll(".gun.current").forEach((g) => g.remove());
+  });
+
   function scheduleStrike() {
     setTimeout(() => { strike(); scheduleStrike(); }, 9000 + Math.random() * 9000);
   }
