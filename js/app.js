@@ -413,12 +413,16 @@
 
   function setPaper(id) {
     if (!paperById(id) || id === state.paper) return;
+    // Remember the old paper so the copier can hold it over the page while it prints the new one.
+    const copier = $("#copier");
+    const was = getComputedStyle(document.documentElement);
+    copier.style.setProperty("--old-bg", was.getPropertyValue("--bg").trim());
+    copier.style.setProperty("--old-grid", was.getPropertyValue("--grid").trim());
     state.paper = id;
     document.documentElement.dataset.paper = id;
     store.set(PAPER_KEY, id);
     render(); // re-rendering redraws every sheet on the new paper
     // A copier light sweeps the page, like running a fresh print.
-    const copier = $("#copier");
     copier.classList.remove("go");
     void copier.offsetWidth; // restart the animation
     copier.classList.add("go");

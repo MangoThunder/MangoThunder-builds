@@ -449,17 +449,28 @@ button.shot:hover img { transform: scale(1.03); }
 }
 .shot-draw.aiming::before, .shot-draw.aiming::after, .shot-draw.aiming .readout { opacity: 0.85; }
 
-/* copier light when the paper changes */
-.copier {
-  position: fixed; top: 0; bottom: 0; left: 0; width: 120px; z-index: 60; pointer-events: none;
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--fg) 22%, transparent) 45%, color-mix(in srgb, var(--fg) 45%, transparent) 50%, color-mix(in srgb, var(--fg) 22%, transparent) 55%, transparent);
-  transform: translateX(-140px); opacity: 0;
+/* copier light when the paper changes: the old paper stays over the page and a bright bar
+   sweeps across it, uncovering the new print behind it */
+.copier { position: fixed; inset: 0; z-index: 60; pointer-events: none; opacity: 0; }
+.copier.go { animation: copier-on 1.3s linear; }
+.copier::before {
+  content: ""; position: absolute; inset: 0;
+  background-color: var(--old-bg, transparent);
+  background-image:
+    linear-gradient(var(--old-grid, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, var(--old-grid, transparent) 1px, transparent 1px);
+  background-size: 100px 100px;
 }
-.copier.go { animation: copy-sweep 0.9s ease-in-out; }
-@keyframes copy-sweep {
-  0% { transform: translateX(-140px); opacity: 1; }
-  100% { transform: translateX(calc(100vw + 20px)); opacity: 1; }
+.copier::after {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 8px; margin-left: -4px;
+  background: linear-gradient(90deg, transparent, #fff 35% 65%, transparent);
+  box-shadow: 0 0 24px 8px var(--stamp), 0 0 80px 30px color-mix(in srgb, var(--stamp) 45%, transparent);
 }
+.copier.go::before { animation: copier-uncover 1.3s cubic-bezier(.5, 0, .5, 1) both; }
+.copier.go::after { animation: copier-bar 1.3s cubic-bezier(.5, 0, .5, 1) both; }
+@keyframes copier-on { 0%, 100% { opacity: 1; } }
+@keyframes copier-uncover { from { clip-path: inset(0 0 0 0); } to { clip-path: inset(0 0 0 100%); } }
+@keyframes copier-bar { from { left: 0; } to { left: 100%; } }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
